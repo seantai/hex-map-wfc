@@ -71,10 +71,10 @@ export class Placeholder {
     this.group.add(this.button)
 
     // Build icon centered on button
-    const iconSize = buttonRadius * 0.7
+    const iconSize = buttonRadius * 1
     const iconGeom = new PlaneGeometry(iconSize, iconSize)
     iconGeom.rotateX(-Math.PI / 2)
-    const iconTex = new TextureLoader().load('./assets/textures/build.png')
+    const iconTex = new TextureLoader().load('./assets/textures/cog.png')
     const iconMat = new MeshBasicMaterial({
       map: iconTex,
       color: 0x000000,
@@ -170,8 +170,9 @@ export class Placeholder {
    */
   startSpinning() {
     if (!this.button) return
-    this.spinTween = gsap.to(this.button.rotation, {
-      y: Math.PI * 2,
+    const targets = [this.button.rotation, this.icon.rotation]
+    this.spinTween = gsap.to(targets, {
+      y: -Math.PI * 2,
       duration: 1,
       repeat: -1,
       ease: 'none'
@@ -186,9 +187,8 @@ export class Placeholder {
       this.spinTween.kill()
       this.spinTween = null
     }
-    if (this.button) {
-      this.button.rotation.y = 0
-    }
+    if (this.button) this.button.rotation.y = 0
+    if (this.icon) this.icon.rotation.y = 0
   }
 
   /**

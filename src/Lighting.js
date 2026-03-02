@@ -25,10 +25,9 @@ export class Lighting {
   async init() {
     const { scene, params } = this
 
-    // Load HDR from params
     const texture = await new RGBELoader()
       .setPath('./assets/hdr/')
-      .loadAsync(params.lighting.hdr)
+      .loadAsync('venice_sunset_1k.hdr')
     texture.mapping = EquirectangularReflectionMapping
     texture.needsUpdate = true
     scene.background = new Color(0x96a0b8)
@@ -61,15 +60,6 @@ export class Lighting {
     // Hemisphere light for soft sky/ground fill (values set by applyParams)
     this.hemiLight = new HemisphereLight(0xffffff, 0x444444, 1)
     scene.add(this.hemiLight)
-  }
-
-  async loadHDR(filename) {
-    const texture = await new RGBELoader()
-      .setPath('./assets/hdr/')
-      .loadAsync(filename)
-    texture.mapping = EquirectangularReflectionMapping
-    texture.needsUpdate = true
-    this.scene.environment = texture
   }
 
   // Compute shadow camera frustum to cover scene from any light angle

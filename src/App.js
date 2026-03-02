@@ -11,7 +11,6 @@ import {
   WebGPURenderer,
   PCFSoftShadowMap,
   AxesHelper,
-  MeshBasicNodeMaterial,
 } from 'three/webgpu'
 import { OrbitControls, CSS2DRenderer } from 'three/examples/jsm/Addons.js'
 import Stats from 'three/addons/libs/stats.module.js'
@@ -24,7 +23,6 @@ import { PostFX } from './PostFX.js'
 import { WavesMask } from './hexmap/effects/WavesMask.js'
 import { setSeed } from './SeededRandom.js'
 import { LEVELS_COUNT } from './hexmap/HexTileData.js'
-import { vec3 } from 'three/tsl'
 import gsap from 'gsap'
 
 // Global status update function
@@ -64,11 +62,6 @@ export class App {
     this.scene = new Scene()
     this.pointerHandler = null
     this.clock = new Clock(false)
-    this.targetFPS = 60
-    this.frameInterval = 1 / 60
-    this.lastFrameTime = 0
-    this.resizeTimeout = null
-
     // Module instances
     this.gui = null
     this.city = null
@@ -94,8 +87,6 @@ export class App {
     setSeed(seed)
     console.log(`%c[SEED] ${seed}`, 'color: black')
     console.log(`%c[LEVELS] ${LEVELS_COUNT}`, 'color: black')
-    this.seed = seed
-    
     this.renderer = new WebGPURenderer({ canvas: this.canvas, antialias: true })
     await this.renderer.init()
     // DPR 2 with half-res AO gives good quality/perf balance
@@ -138,8 +129,6 @@ export class App {
     await this.city.init()
 
     // Water mask: swap tile materials to unlit B&W mask material for mask RT render
-    this._whiteMat = new MeshBasicNodeMaterial()
-    this._whiteMat.colorNode = vec3(1, 1, 1)
     this._savedMats = new Map()
     this.postFX.onWaterMaskRender = (enabled) => {
       if (enabled) {
@@ -310,7 +299,7 @@ export class App {
     }
     this.wavesMask.render(this.scene, tileMeshes, this.city.waterPlane, this.city.globalCells)
     this.postFX.setOverlayObjects(this.city.getOverlayObjects())
-    this.postFX.setEffectsObjects(this.city.getEffectsObjects())
+
     this.postFX.setWaterObjects(this.city.getWaterObjects())
     this.postFX.render()
 
@@ -656,7 +645,6 @@ export class App {
     }
     postFX.setWaterMaskObjects(maskObjects)
     postFX.setOverlayObjects(this.city.getOverlayObjects())
-    postFX.setEffectsObjects(this.city.getEffectsObjects())
     postFX.setWaterObjects(this.city.getWaterObjects())
 
     postFX.render()

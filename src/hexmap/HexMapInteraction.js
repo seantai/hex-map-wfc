@@ -26,6 +26,7 @@ export class HexMapInteraction {
     this.hoveredCubeKey = null
     this.hoverHighlight = null
     this.hoverFill = null
+    this.hasClicked = false
   }
 
   initHoverHighlight() {
@@ -161,7 +162,7 @@ export class HexMapInteraction {
       this.hoveredGrid = newHovered
       if (newHovered) {
         newHovered.setHover(true)
-        Sounds.play('roll', 1.0, 0.2, 0.5)
+        if (this.hasClicked) Sounds.play('roll', 1.0, 0.2, 0.5)
         document.body.style.cursor = 'pointer'
       } else {
         document.body.style.cursor = ''
@@ -204,6 +205,7 @@ export class HexMapInteraction {
   }
 
   onPointerDown(pointer, camera) {
+    this.hasClicked = true
     const hm = this.hexMap
     const placeholderClickables = []
     for (const grid of hm.grids.values()) {

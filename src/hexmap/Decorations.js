@@ -578,10 +578,10 @@ export class Decorations {
       const tileName = tileDef?.name
       if (!tileName) continue
       const isRiver = tileName.startsWith('RIVER_') && !tileName.startsWith('RIVER_CROSSING')
-      const isCoast = tileName.startsWith('COAST_')
-      if (!isRiver && !isCoast) continue
+      const isCoastWater = tileName === 'COAST_B' || tileName === 'COAST_C' || tileName === 'COAST_D'
+      if (!isRiver && !isCoastWater) continue
 
-      // Random chance to skip (not every river tile gets lilies)
+      // Random chance to skip (not every tile gets lilies)
       if (random() > 0.075) continue
 
       if (this.waterlilies.length >= MAX_WATERLILIES - 1) break
@@ -591,12 +591,21 @@ export class Decorations {
         tile.gridX - gridRadius,
         tile.gridZ - gridRadius
       )
-      const ox = (random() - 0.5) * 0.3
-      const oz = (random() - 0.5) * 0.3
+      let ox, oz
+      if (isCoastWater) {
+        const localSide = (random() - 0.5) * 0.3
+        const localFwd = 0.4 + random() * 0.4
+        const angle = tile.rotation * Math.PI / 3
+        ox = localSide * Math.cos(angle) - localFwd * Math.sin(angle)
+        oz = localSide * Math.sin(angle) + localFwd * Math.cos(angle)
+      } else {
+        ox = (random() - 0.5) * 0.3
+        oz = (random() - 0.5) * 0.3
+      }
       const rotationY = random() * Math.PI * 2
       const instanceId = this._placeInstance(this.mesh, this.geomIds, meshName, localPos.x + ox, tile.level * LEVEL_HEIGHT + TILE_SURFACE - 0.2, localPos.z + oz, rotationY, 2, tile.level)
       if (instanceId === -1) break
-      this.waterlilies.push({ tile, meshName, instanceId, rotationY, ox: ox, oz: oz })
+      this.waterlilies.push({ tile, meshName, instanceId, rotationY, ox, oz })
     }
   }
 
@@ -718,9 +727,11 @@ export class Decorations {
     if (!hasHills && !hasMountains) return
 
     const buildingTileIds = new Set(this.buildings.map(b => b.tile.id))
+    const treeTileIds = new Set(this.trees.map(t => t.tile.id))
 
     for (const tile of hexTiles) {
       if (buildingTileIds.has(tile.id)) continue
+      if (treeTileIds.has(tile.id)) continue
       const def = TILE_LIST[tile.type]
       if (!def) continue
 
@@ -980,7 +991,8 @@ export class Decorations {
       // Waterlilies
       const isRiver = name.startsWith('RIVER_') && !name.startsWith('RIVER_CROSSING')
       const isCoast = name.startsWith('COAST_')
-      if ((isRiver || isCoast) && this.mesh && random() <= 0.075) {
+      const isCoastWater = name === 'COAST_B' || name === 'COAST_C' || name === 'COAST_D'
+      if ((isRiver || isCoastWater) && this.mesh && random() <= 0.075) {
         const lilyNames = WaterlilyMeshNames.filter(n => this.geomIds.has(n))
         if (lilyNames.length > 0 && this.waterlilies.length < MAX_WATERLILIES - 1) {
           const meshName = lilyNames[Math.floor(random() * lilyNames.length)]
@@ -988,8 +1000,17 @@ export class Decorations {
           const instanceId = this._addInstance(this.mesh, geomId)
           if (instanceId !== -1) {
             this.mesh.setColorAt(instanceId, levelColor(tile.level))
-            const ox = (random() - 0.5) * 0.3
-            const oz = (random() - 0.5) * 0.3
+            let ox, oz
+            if (isCoastWater) {
+              const localSide = (random() - 0.5) * 0.3
+              const localFwd = 0.4 + random() * 0.4
+              const angle = tile.rotation * Math.PI / 3
+              ox = localSide * Math.cos(angle) - localFwd * Math.sin(angle)
+              oz = localSide * Math.sin(angle) + localFwd * Math.cos(angle)
+            } else {
+              ox = (random() - 0.5) * 0.3
+              oz = (random() - 0.5) * 0.3
+            }
             const rotationY = random() * Math.PI * 2
             const y = tile.level * LEVEL_HEIGHT + TILE_SURFACE - 0.2
             this.dummy.position.set(localPos.x + ox, y, localPos.z + oz)

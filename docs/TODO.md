@@ -1,22 +1,25 @@
 # TODO
 
+61547
 
 good seed: 31930
 
-- add flyhtrough button
-- make intro screen? audio? start btn wait for audio
-- figure out ui? for more fun interaction? click one tile to flip to a new tile? (show avaiable tiles?)=
-- clean up old assets
-- push. record video. 
+- dial in AO
+- push.
 - send link to codrops
 
 
 ## blog post
 - pick out images
 - rewrite text a little bit
+- readd drop step
+- find out wfc recovery count
+- 25s build time
+- AO full size
+- remove lut ref
 
 
-####
+#### LATER
 
 # MORE DEC
 - boats

@@ -41,7 +41,6 @@ export class PostFX {
 
     // AO parameters
     this.aoBlurAmount = uniform(1)
-    this.aoIntensity = uniform(1)
 
     // DOF parameters
     this.dofFocus = uniform(100)
@@ -63,10 +62,6 @@ export class PostFX {
     this.overlayTarget = new RenderTarget(w, h, { samples: 1 })
     this.overlayTarget.texture.format = RGBAFormat
 
-    // Effects render target (weather — depth-tested against scene, no AO)
-    this.effectsTarget = new RenderTarget(w, h, { samples: 1 })
-    this.effectsTarget.texture.format = RGBAFormat
-
     // Water render target (water planes — masked to water areas)
     this.waterTarget = new RenderTarget(w, h, { samples: 1 })
     this.waterTarget.texture.format = RGBAFormat
@@ -78,7 +73,6 @@ export class PostFX {
 
     // Object lists (set externally each frame)
     this.overlayObjects = []
-    this.effectsObjects = []
     this.waterObjects = []
     this.waterMaskObjects = []
 
@@ -100,8 +94,6 @@ export class PostFX {
         normal: normalView,
       })
     )
-    this._scenePass = scenePass
-
     const scenePassColor = scenePass.getTextureNode('output')
     const scenePassNormal = scenePass.getTextureNode('normal')
     const scenePassDepth = scenePass.getTextureNode('depth')
@@ -113,7 +105,7 @@ export class PostFX {
 
     // ---- GTAO pass (uses depth/normals from scene, not affected by DOF) ----
     this.aoPass = ao(scenePassDepth, scenePassNormal, camera)
-    this.aoPass.resolutionScale = 1
+    this.aoPass.resolutionScale = 0.5
     this.aoPass.distanceExponent.value = 1
     this.aoPass.distanceFallOff.value = 0.1
     this.aoPass.radius.value = 1.0
@@ -130,10 +122,6 @@ export class PostFX {
     const softenedAO = blurredAO.pow(0.5) // Square root makes it softer
     const withAO = mix(afterDof, afterDof.mul(softenedAO), this.aoEnabled)
 
-    // ---- Effects layer compositing (weather) ----
-    const effectsTexture = texture(this.effectsTarget.texture)
-    const withEffects = withAO.add(effectsTexture.rgb.mul(effectsTexture.a))
-
     // ---- Water layer compositing (masked to water areas via mask RT) ----
     const waterMaskSample = texture(this.waterMaskTarget.texture)
     const waterMask = waterMaskSample.r.greaterThan(0.1).toFloat()
@@ -141,7 +129,7 @@ export class PostFX {
     // Water RT: additive blend, masked to water areas
     const waterTexture = texture(this.waterTarget.texture)
     const waterAlpha = waterTexture.a.mul(waterMask)
-    const withWater = withEffects.add(waterTexture.rgb.mul(waterAlpha))
+    const withWater = withAO.add(waterTexture.rgb.mul(waterAlpha))
 
     // ---- Overlay layer compositing (UI) ----
     const overlayTexture = texture(this.overlayTarget.texture)
@@ -184,7 +172,6 @@ export class PostFX {
     const normalViz = scenePassNormal.mul(0.5).add(0.5)
     const aoViz = vec3(blurredAO)
     const overlayViz = overlayTexture.rgb
-    const effectsViz = effectsTexture.rgb
     const waterMaskViz = vec3(waterMaskSample.r)
 
     // Select output based on debug view
@@ -203,11 +190,7 @@ export class PostFX {
             select(
               this.debugView.lessThan(4.5),
               aoViz,
-              select(
-                this.debugView.lessThan(5.5),
-                overlayViz,
-                select(this.debugView.lessThan(6.5), effectsViz, waterMaskViz)
-              )
+              select(this.debugView.lessThan(5.5), overlayViz, waterMaskViz)
             )
           )
         )
@@ -231,17 +214,12 @@ export class PostFX {
     const w = window.innerWidth * dpr
     const h = window.innerHeight * dpr
     this.overlayTarget.setSize(w, h)
-    this.effectsTarget.setSize(w, h)
     this.waterTarget.setSize(w, h)
     this.waterMaskTarget.setSize(Math.ceil(w / 4), Math.ceil(h / 4))
   }
 
   setOverlayObjects(objects) {
     this.overlayObjects = objects
-  }
-
-  setEffectsObjects(objects) {
-    this.effectsObjects = objects
   }
 
   setWaterObjects(objects) {
@@ -253,7 +231,7 @@ export class PostFX {
   }
 
   render() {
-    const { renderer, scene, camera, overlayObjects, overlayTarget, effectsObjects, effectsTarget } = this
+    const { renderer, scene, camera, overlayObjects, overlayTarget } = this
 
     const savedClearColor = renderer.getClearColor(new Color())
     const savedClearAlpha = renderer.getClearAlpha()
@@ -315,27 +293,6 @@ export class PostFX {
       obj.visible = visible
     }
 
-    // ---- Effects pass: render before main so texture binding is fresh when sampled ----
-    renderer.setRenderTarget(effectsTarget)
-    renderer.setClearColor(0x000000, 0)
-    renderer.clear()
-
-    if (effectsObjects.length > 0) {
-      const savedEffVis = new Map()
-      scene.traverse((child) => {
-        if (!child.isMesh && !child.isLine && !child.isLineSegments && !child.isPoints) return
-        const isEffect = effectsObjects.some(o => o === child || o.getObjectById?.(child.id))
-        if (!isEffect) {
-          savedEffVis.set(child, child.visible)
-          child.visible = false
-        }
-      })
-
-      renderer.render(scene, camera)
-
-      for (const [child, vis] of savedEffVis) child.visible = vis
-    }
-
     // ---- Water pass: render water planes to separate RT ----
     const { waterObjects, waterTarget } = this
     renderer.setRenderTarget(waterTarget)
@@ -363,13 +320,9 @@ export class PostFX {
     renderer.setRenderTarget(null)
     renderer.setClearColor(savedClearColor, savedClearAlpha)
 
-    // ---- Main pass: hide effects + overlay + water, render with AO ----
+    // ---- Main pass: hide overlay + water, render with AO ----
     const savedMainVis = new Map()
     for (const obj of waterObjects) {
-      savedMainVis.set(obj, obj.visible)
-      obj.visible = false
-    }
-    for (const obj of effectsObjects) {
       savedMainVis.set(obj, obj.visible)
       obj.visible = false
     }

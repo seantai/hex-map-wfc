@@ -3,7 +3,6 @@ import {
   NoToneMapping, LinearToneMapping, ReinhardToneMapping,
   CineonToneMapping, ACESFilmicToneMapping, AgXToneMapping, NeutralToneMapping,
 } from 'three/webgpu'
-import { Sounds } from './lib/Sounds.js'
 import { setTreeNoiseFrequency, setTreeThreshold, setBuildingNoiseFrequency, setBuildingThreshold } from './hexmap/Decorations.js'
 import { HexTile } from './hexmap/HexTiles.js'
 
@@ -20,20 +19,10 @@ export class GUIManager {
       fov: 20,
       flythrough: false,
     },
-    scene: {
-      noiseScale: 0.015,
-      noiseSubtract: 0.15,
-      noiseHeight: 27,
-      randHeight: 5,
-      randHeightPower: 6.5,
-      centerFalloff: 1,
-      skipChance: 0.1,
-    },
     lighting: {
       exposure: 1,
       toneMapping: 'None',
       envIntensity: 0.95,
-      hdr: 'venice_sunset_1k.hdr',
       dirLight: 2.15,
       hemiLight: 0.25,
       shadowIntensity: 1.0,
@@ -41,27 +30,21 @@ export class GUIManager {
       lightY: 50,
       lightZ: 45,
       showHelper: false,
-      hdrRotation: 191,
     },
     material: {
-      color: '#ffffff',
       roughness: 1,
-      metalness: 0.03,
-      clearcoat: 0.53,
+      metalness: 0,
+      clearcoat: 0,
       clearcoatRoughness: 0,
-      iridescence: 0.21,
-      useBlenderTexture: true,
+      iridescence: 0,
     },
     fx: {
       ao: true,
       aoStrength: 2.7,
       aoRadius: 1,
       aoBlur: 0.3,
-      aoIntensity: 0.95,
-      aoFullRes: true,
+      aoFullRes: false,
       vignette: true,
-      dots: true,
-      debris: true,
       dof: true,
       dofAperture: 0.21,
       dofMaxblur: 0.005,
@@ -86,15 +69,7 @@ export class GUIManager {
       dpr: 1, // Will be set dynamically based on device
     },
     roads: {
-      cumulativeWeights: false,
-      maxTiles: 150,
-      layers: 1,
-      useWFC: true,
-      useHex: true,
-      hexGridRadius: 6,
       animateWFC: true,
-      animateDelay: 6,
-      useLevels: true,
       showOutlines: false,
     },
     decoration: {
@@ -158,7 +133,7 @@ export class GUIManager {
 
 
     // Debug view
-    const viewMap = { final: 0, color: 1, normal: 3, ao: 4, overlay: 5, effects: 6, mask: 7 }
+    const viewMap = { final: 0, color: 1, normal: 3, ao: 4, overlay: 5, mask: 6 }
     gui.add(allParams.debug, 'view', Object.keys(viewMap)).name('Debug View').onChange((v) => {
       app.debugView.value = viewMap[v]
     })
@@ -173,10 +148,10 @@ export class GUIManager {
       app.controls.minDistance = v ? 0 : 25
       app.controls.maxDistance = v ? Infinity : 410
     })
-    gui.add(allParams.debug, 'hexGrid').name('Hex Grid').onChange((v) => {
+    gui.add(allParams.debug, 'hexGrid').name('Cell Outlines').onChange((v) => {
       app.city.setHelpersVisible(v)
     })
-    gui.add(allParams.roads, 'showOutlines').name('Show Outlines').onChange((v) => {
+    gui.add(allParams.roads, 'showOutlines').name('Grid Outlines').onChange((v) => {
       app.city?.setOutlinesVisible(v)
     })
     gui.add(allParams.roads, 'animateWFC').name('Animate WFC')
@@ -356,23 +331,6 @@ export class GUIManager {
 
     // Lights folder
     const lightsFolder = gui.addFolder('Lights').close()
-    const hdrOptions = [
-      'studio_small_05_2k.hdr',
-      'studio_small_08_2k.hdr',
-      'photo_studio_01_1k.hdr',
-      'royal_esplanade_1k.hdr',
-      'solitude_interior_1k.hdr',
-      'venice_sunset_1k.hdr',
-      'kloofendal_48d_partly_cloudy_puresky_1k.hdr',
-      'overcast_soil_puresky_1k.hdr',
-      'simons_town_rocks_1k.hdr',
-      'tiber_island_1k.hdr',
-    ]
-    lightsFolder.add(allParams.lighting, 'hdr', hdrOptions).name('HDR').onChange((v) => {
-      app.lighting.loadHDR(v)
-    })
-    // HDR rotation disabled — see TODO.md for details
-    // lightsFolder.add(allParams.lighting, 'hdrRotation', 0, 360, 1).name('HDR Rotation')
     lightsFolder.add(allParams.lighting, 'exposure', 0, 2, 0.05).name('Exposure').onChange((v) => {
       app.renderer.toneMappingExposure = v
     })
@@ -422,8 +380,6 @@ export class GUIManager {
     lightsFolder.add(allParams.lighting, 'showHelper').name('Show Helper').onChange((v) => {
       if (app.lighting.dirLightHelper) app.lighting.dirLightHelper.visible = v
     })
-
-    // Material folder removed - using GLB material directly for hex tiles
 
     // Effects folder
     const fxFolder = gui.addFolder('Post Processing').close()
@@ -491,7 +447,14 @@ export class GUIManager {
       app.lighting.updateShadowFrustum()
     }
     if (app.lighting.dirLightHelper) app.lighting.dirLightHelper.visible = params.lighting.showHelper
-    // Material override removed - using GLB material directly for hex tiles
+    // Material
+    if (app.city.roadMaterial) {
+      app.city.roadMaterial.roughness = params.material.roughness
+      app.city.roadMaterial.metalness = params.material.metalness
+      app.city.roadMaterial.clearcoat = params.material.clearcoat
+      app.city.roadMaterial.clearcoatRoughness = params.material.clearcoatRoughness
+      app.city.roadMaterial.iridescence = params.material.iridescence
+    }
 
     // Post processing
     app.aoEnabled.value = params.fx.ao ? 1 : 0

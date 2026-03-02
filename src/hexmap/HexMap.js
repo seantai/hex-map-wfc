@@ -2,9 +2,7 @@ import {
   Object3D,
   MeshPhysicalNodeMaterial,
   MeshBasicNodeMaterial,
-  PlaneGeometry,
   Mesh,
-  MeshStandardMaterial,
   TextureLoader,
   SRGBColorSpace,
 } from 'three/webgpu'
@@ -68,8 +66,6 @@ export class HexMap {
     this.scene = scene
     this.params = params
 
-    this.dummy = new Object3D()
-
     // Grid management - all grids (both PLACEHOLDER and POPULATED)
     this.grids = new Map()  // key: "x,z" grid coords, value: HexGrid instance
     this.hexGridRadius = 8
@@ -123,7 +119,6 @@ export class HexMap {
   async init() {
     await HexTileGeometry.init('./assets/models/hex-terrain.glb')
     Decorations.initGeometries(HexTileGeometry.gltfScene)
-    this.createFloor()
     this.water = new Water(this.scene, this.coastMaskTexture, this.coveMaskTexture)
     this.water.init()
     await this.initMaterial()
@@ -150,7 +145,7 @@ export class HexMap {
     }
 
     const mat = new MeshPhysicalNodeMaterial()
-    mat.roughness = 0.5
+    mat.roughness = 1
     mat.metalness = 0
     this.roadMaterial = mat
 
@@ -283,20 +278,6 @@ export class HexMap {
     return changedTilesPerGrid
   }
 
-  createFloor() {
-    const floorGeometry = new PlaneGeometry(296, 296)
-    floorGeometry.rotateX(-Math.PI / 2)
-
-    const floorMaterial = new MeshStandardMaterial({
-      color: 0x999999,
-      roughness: 0.9,
-      metalness: 0.0
-    })
-
-    this.floor = new Mesh(floorGeometry, floorMaterial)
-    this.floor.receiveShadow = true
-    this.scene.add(this.floor)
-  }
 
   /**
    * Create a new HexGrid at grid coordinates (starts in PLACEHOLDER state)
@@ -1445,7 +1426,10 @@ export class HexMap {
       }
 
       this.addToGlobalCells('rebuild-wfc', result.tiles)
-      this.onTilesChanged?.(Promise.resolve())
+      // Estimate total animation time: last tile drop start + drop duration (400ms)
+      const totalTiles = Array.from(changedTilesPerGrid.values()).reduce((sum, t) => sum + t.length, 0)
+      const animDone = new Promise(resolve => setTimeout(resolve, totalTiles * TILE_STAGGER + 400))
+      this.onTilesChanged?.(animDone)
 
       log(`[REBUILD] (${global.col},${global.row}) solved ${result.tiles.length} tiles`, 'color: green')
       Sounds.play('pop', 1.0, 0.15)
@@ -1712,7 +1696,6 @@ export class HexMap {
   _updateColorNode() { this.debug._updateColorNode() }
   updateTileColors() { this.debug.updateTileColors() }
   getOverlayObjects() { return this.debug.getOverlayObjects() }
-  getEffectsObjects() { return this.debug.getEffectsObjects() }
   getWaterObjects() {
     const water = []
     if (this.water?.mesh) water.push(this.water.mesh)

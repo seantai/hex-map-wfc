@@ -251,8 +251,4 @@ export class HexMapDebug {
     }
     return overlays
   }
-
-  getEffectsObjects() {
-    return []
-  }
 }

@@ -8,40 +8,16 @@ class SoundsManager {
     this.mutedSounds = new Set() // Sounds to mute (by name)
     this.sounds = {
       pop: new Howl({ src: ['assets/sfx/pop.mp3'] }),
-      tick: new Howl({ src: ['assets/sfx/tick.mp3'] }),
       roll: new Howl({ src: ['assets/sfx/roll.mp3'] }),
-      debris: new Howl({ src: ['assets/sfx/debris.mp3'] }),
       good: new Howl({ src: ['assets/sfx/good.mp3'] }),
       intro: new Howl({ src: ['assets/sfx/intro.mp3'] }),
-      mystery: new Howl({ src: ['assets/sfx/mystery.mp3'] }),
       incorrect: new Howl({ src: ['assets/sfx/incorrect.mp3'] }),
-      correct: new Howl({ src: ['assets/sfx/correct.mp3'] }),
-      done: new Howl({ src: ['assets/sfx/done.mp3'] }),
     }
-    // Multiple stone sounds for random selection
-    this.stoneSounds = [
-      new Howl({ src: ['assets/sfx/stone-01.mp3'] }),
-      new Howl({ src: ['assets/sfx/stone-02.mp3'] }),
-      new Howl({ src: ['assets/sfx/stone-03.mp3'] }),
-      new Howl({ src: ['assets/sfx/stone-04.mp3'] }),
-      new Howl({ src: ['assets/sfx/stone-05.mp3'] }),
-    ]
-    // Multiple clink sounds for debris collisions
-    this.clinkSounds = [
-      new Howl({ src: ['assets/sfx/clink01.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink02.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink03.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink04.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink05.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink06.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink07.mp3'] }),
-      new Howl({ src: ['assets/sfx/clink08.mp3'] }),
-    ]
   }
 
   /**
    * Play a sound with optional rate variation and volume
-   * @param {string} name - Sound name (pop, tick, roll, stone)
+   * @param {string} name - Sound name (pop, roll, good, intro, incorrect)
    * @param {number} baseRate - Base playback rate (default 1.0)
    * @param {number} variation - Random variation amount (default 0.2)
    * @param {number} volume - Volume 0-1 (default 1.0)
@@ -50,18 +26,7 @@ class SoundsManager {
     // Skip muted sounds
     if (this.mutedSounds.has(name)) return
 
-    let sound
-    if (name === 'stone') {
-      // Randomly select one of the stone sounds
-      sound = this.stoneSounds[Math.floor(Math.random() * this.stoneSounds.length)]
-    } else if (name === 'clink') {
-      // Randomly select one of the clink sounds
-      sound = this.clinkSounds[Math.floor(Math.random() * this.clinkSounds.length)]
-    } else if (name === 'clink3') {
-      sound = this.clinkSounds[2]
-    } else {
-      sound = this.sounds[name]
-    }
+    const sound = this.sounds[name]
     if (!sound) {
       console.warn(`Sound "${name}" not found`)
       return
