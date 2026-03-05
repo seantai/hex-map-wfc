@@ -17,7 +17,7 @@
   <header>
     <h1>Building a Procedural Hex Map with Wave Function Collapse</h1>
     <p class="tagline">Procedural medieval islands from 4,100 hex tiles, built with WebGPU and a lot of backtracking.</p>
-    <p class="subtitle"><a href="https://felixturner.github.io/hex-map-wfc/" target="_blank">Run the live demo</a> &middot; <a href="https://github.com/felixturner/hex-map-wfc" target="_blank">Source on GitHub</a></p>
+    <p class="subtitle"><a href="https://felixturner.github.io/hex-map-wfc/" target="_blank">Run the live demo</a> &middot; <a href="https://github.com/felixturner/hex-map-wfc" target="_blank">Source code on GitHub</a></p>
   </header>
 
   <!-- FULL BLEED -->
@@ -104,8 +104,8 @@
 
     <h3>The Recovery System</h3>
     <p>After many failed approaches, I landed on a layered recovery system:</p>
-    <p><strong>Step 1: Unfixing.</strong> During the initial constraint propagation, if a neighbor cell creates a contradiction, the solver converts it from a fixed constraint back into a solvable cell. Its <em>own</em> neighbors (two cells out&nbsp;&mdash; "anchors") become the new constraints. This is cheap and handles easy cases.</p>
-    <p><strong>Layer 2: Local-WFC.</strong> If the main solve fails, we run a mini-WFC on a small radius-2 region around the problem area&nbsp;&mdash; re-solving 19 cells in the overlap area to create a more compatible boundary. Up to 5 attempts, each targeting a different problem cell. Local-WFC was the breakthrough. Instead of trying to solve the impossible, go back and change the problem. The system even got up to ~86% success solving the entire map in one go.</p>
+    <p><strong>Layer 1: Unfixing.</strong> During the initial constraint propagation, if a neighbor cell creates a contradiction, the solver converts it from a fixed constraint back into a solvable cell. Its <em>own</em> neighbors (two cells out&nbsp;&mdash; "anchors") become the new constraints. This is cheap and handles easy cases.</p>
+    <p><strong>Layer 2: Local-WFC.</strong> If the main solve fails, the solver runs a mini-WFC on a small radius-2 region around the problem area&nbsp;&mdash; re-solving 19 cells in the overlap area to create a more compatible boundary. Up to 5 attempts, each targeting a different problem cell. Local-WFC was the breakthrough. Instead of trying to solve the impossible, go back and change the problem. The system even got up to ~86% success solving the entire map in one go.</p>
     <p><strong>Layer 3: Drop and hide.</strong> Last resort. Drop the offending neighbor cell entirely and place mountain tiles to cover the seams. Mountains are great&nbsp;&mdash; their cliff edges match anything, and they look intentional. Nobody questions a mountain.</p>
   </section>
 
@@ -171,7 +171,7 @@
   <section>
     <h2>Trees, Buildings, and Why Not Everything Should Be WFC</h2>
     <p>Early on, I tried using WFC for tree and building placement. Bad idea. WFC is great at local edge matching but terrible at large-scale patterns. You'd get trees scattered randomly instead of clustered into forests, or buildings spread evenly instead of gathered into villages.</p>
-    <p>The solution: good old Perlin noise. A global noise field determines tree density and building placement, completely separate from WFC. Areas where the noise is above a threshold get trees; slightly different noise drives buildings. This gives you organic clustering&nbsp;&mdash; forests, clearings, villages&nbsp;&mdash; that WFC could never produce.</p>
+    <p>The solution: good old Perlin noise. A global noise field determines tree density and building placement, completely separate from WFC. Areas where the noise is above a threshold get trees; slightly different noise drives buildings. This gives you organic clustering&nbsp;&mdash; forests, clearings, villages&nbsp;&mdash; that WFC could never produce. I also used some additional logic to place buildings at the end of roads, ports and windmills on coasts, henges on hilltops etc.</p>
     <p>WFC handles the terrain. Noise handles the decorations. Each tool does what it's good at.</p>
   </section>
 
@@ -234,7 +234,7 @@
 
   <section>
     <h3>The Cove Problem</h3>
-    <p>This worked great on straight coastlines. In concave coves and inlets, the waves lines got thick and ugly. The blur-based gradient spreads the same value range over a wider physical area in coves, stretching the wave bands out.</p>
+    <p>This worked great on straight coastlines. In concave coves and inlets, the wave lines got thick and ugly. The blur-based gradient spreads the same value range over a wider physical area in coves, stretching the wave bands out.</p>
     <p>I tried multiple fixes:</p>
     <ul>
       <li><strong>Screen-space derivatives</strong> to detect gradient stretching&nbsp;&mdash; worked at one zoom level, broke at others.</li>
@@ -267,7 +267,7 @@
 
   <!-- FULL BLEED -->
   <figure class="full">
-    <img src="img/pretty.jpg" alt="Blender viewport showing hex tiles">
+    <img src="img/pretty.jpg" alt="Completed map beauty shot">
   </figure>
 
   <section>
@@ -278,8 +278,8 @@
     <h3>The Post-Processing Stack</h3>
     <p>The raw render looks... fine. Flat. Like a board game photographed under fluorescent lights. The post-processing pipeline is what gives it atmosphere:</p>
     <ol>
-      <li><strong>GTAO Ambient Occlusion</strong>&nbsp;&mdash; darkens crevices between tiles, around buildings and trees. This makes everthing feel more solid. The AO result is denoised to reduce speckling. This runs at half resolution since AO and denoising is expensive.</li>
-      <li><strong>Depth of Field</strong>&nbsp;&mdash; tilt-shift blur based on camera distance gives it that miniature/diorama feel. We scale the DOF focal length with the camera zoom to give more DOF when zoomed in.</li>
+      <li><strong>GTAO Ambient Occlusion</strong>&nbsp;&mdash; darkens crevices between tiles, around buildings and trees. This makes everything feel more solid. The AO result is denoised to reduce speckling. This runs at half resolution since AO and denoising is expensive.</li>
+      <li><strong>Depth of Field</strong>&nbsp;&mdash; tilt-shift blur based on camera distance gives it that miniature/diorama feel. The DOF focal length scales with the camera zoom to give more DOF when zoomed in.</li>
       <li><strong>Vignette + Film Grain</strong>&nbsp;&mdash; subtle edge darkening and noise. Just enough to feel analog.</li>
     </ol>
   </section>
@@ -340,7 +340,7 @@
   <section>
     <h2>Optimizations</h2>
     <p>The complete map has thousands of tiles and decorations. Drawing each one individually would kill the frame rate. The solution is two-fold:</p>
-    <p><strong>BatchedMesh</strong>&nbsp;&mdash; each hex grid gets 2 BatchedMeshes: one for tiles, one for decorations. The beauty of a BatchedMesh is that each mesh can have seperate geometry and transforms, but they all render in a single draw call. The GPU handles per-instance transforms and geometry offsets, so CPU cost is essentially zero after setup.</p>
+    <p><strong>BatchedMesh</strong>&nbsp;&mdash; each hex grid gets 2 BatchedMeshes: one for tiles, one for decorations. The beauty of a BatchedMesh is that each mesh can have separate geometry and transforms, but they all render in a single draw call. The GPU handles per-instance transforms and geometry offsets, so CPU cost is essentially zero after setup.</p>
     <p>The whole scene renders in a handful of draw calls regardless of map complexity. That means the base render is cheap, so you can spend your GPU budget on AO, DoF, and color grading instead.</p>
     <p><strong>One Shared Material</strong>&nbsp;&mdash; every mesh in the scene shares a single material. The Mesh UVs map into a small palette texture, so they all pull their color from the same image, like a shared paint-by-numbers sheet. One material means zero shader state switches between draw calls, so the GPU can blast through 38 BatchedMeshes without stalling.</p>
     <p>The result: 4,100+ cells, 38 BatchedMeshes, and the whole thing renders at 60fps on desktop and mobile.</p>

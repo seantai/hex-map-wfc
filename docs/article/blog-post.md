@@ -87,9 +87,9 @@ But backtracking alone isn't enough. The real problem is cross-grid boundaries.
 
 After many failed approaches, I landed on a layered recovery system:
 
-**Step 1: Unfixing.** During the initial constraint propagation, if a neighbor cell creates a contradiction, the solver converts it from a fixed constraint back into a solvable cell. Its *own* neighbors (two cells out — "anchors") become the new constraints. This is cheap and handles easy cases.
+**Layer 1: Unfixing.** During the initial constraint propagation, if a neighbor cell creates a contradiction, the solver converts it from a fixed constraint back into a solvable cell. Its *own* neighbors (two cells out — "anchors") become the new constraints. This is cheap and handles easy cases.
 
-**Layer 2: Local-WFC.** If the main solve fails, we run a mini-WFC on a small radius-2 region around the problem area — re-solving 19 cells in the overlap area to create a more compatible boundary. Up to 5 attempts, each targeting a different problem cell. Local-WFC was the breakthrough. Instead of trying to solve the impossible, go back and change the problem. The system even got up to ~86% success solving the entire map in one go.
+**Layer 2: Local-WFC.** If the main solve fails, the solver runs a mini-WFC on a small radius-2 region around the problem area — re-solving 19 cells in the overlap area to create a more compatible boundary. Up to 5 attempts, each targeting a different problem cell. Local-WFC was the breakthrough. Instead of trying to solve the impossible, go back and change the problem. The system even got up to ~86% success solving the entire map in one go.
 
 **Layer 3: Drop and hide.** Last resort. Drop the offending neighbor cell entirely and place mountain tiles to cover the seams. Mountains are great — their cliff edges match anything, and they look intentional. Nobody questions a mountain.
 
@@ -129,7 +129,7 @@ If you've ever worked with hex grids, you owe [Amit Patel at Red Blob Games](htt
 
 Early on, I tried using WFC for tree and building placement. Bad idea. WFC is great at local edge matching but terrible at large-scale patterns. You'd get trees scattered randomly instead of clustered into forests, or buildings spread evenly instead of gathered into villages.
 
-The solution: good old Perlin noise. A global noise field determines tree density and building placement, completely separate from WFC. Areas where the noise is above a threshold get trees; slightly different noise drives buildings. This gives you organic clustering — forests, clearings, villages — that WFC could never produce. I also used some additional logic to place buildings at the end of roads, ports and windmills on coasts, henges on hilltops etc
+The solution: good old Perlin noise. A global noise field determines tree density and building placement, completely separate from WFC. Areas where the noise is above a threshold get trees; slightly different noise drives buildings. This gives you organic clustering — forests, clearings, villages — that WFC could never produce. I also used some additional logic to place buildings at the end of roads, ports and windmills on coasts, henges on hilltops etc.
 
 WFC handles the terrain. Noise handles the decorations. Each tool does what it's good at.
 
@@ -148,11 +148,11 @@ Water effects were the hardest visual problem to solve. The ocean isn't just a b
 
 ### Sparkles
 
-I wanted that 'Zelda: The Wind Waker' cartoon shimmer on the water surface. Originally I tried generating caustics procedurally with four layers of Voronoi noise. This turned out to be very GPU heavy and did not look great. The solution was sampling a small scrolling caustic texture with a simple noise mask, which  looks way better and is super cheap. Sometimes the easy solution is the correct solution.
+I wanted that 'Zelda: The Wind Waker' cartoon shimmer on the water surface. Originally I tried generating caustics procedurally with four layers of Voronoi noise. This turned out to be very GPU heavy and did not look great. The solution was sampling a small scrolling caustic texture with a simple noise mask, which looks way better and is super cheap. Sometimes the easy solution is the correct solution.
 
 ### Coast Waves
 
-Waves are sine bands that radiate outward from coastlines, inspired by [Bad North](https://www.badnorth.com/)'s gorgeous shoreline effect. To know "how far from the coast" each pixel is, the system renders a coast mask — a top down orthgraphic render of the entire map with white for land and black for water — then dilates and blurs it into a gradient. The wave shader reads this gradient to place animated sine bands at regular distance intervals, with noise to break up the pattern.
+Waves are sine bands that radiate outward from coastlines, inspired by [Bad North](https://www.badnorth.com/)'s gorgeous shoreline effect. To know "how far from the coast" each pixel is, the system renders a coast mask — a top down orthographic render of the entire map with white for land and black for water — then dilates and blurs it into a gradient. The wave shader reads this gradient to place animated sine bands at regular distance intervals, with noise to break up the pattern.
 
 <!-- slideshow -->
 ![Flat blue plane](img/water/01-flat.jpg) ![Water mask](img/water/02-mask.jpg) ![Caustic sparkles](img/water/03-sparkles.jpg) ![Coast waves fat in coves](img/water/04-waves.jpg) ![Surroundedness mask](img/water/05-coves-mask.jpg) ![Final water](img/water/06-final-waves.jpg)
@@ -161,7 +161,7 @@ Waves are sine bands that radiate outward from coastlines, inspired by [Bad Nort
 
 ### The Cove Problem
 
-This worked great on straight coastlines. In concave coves and inlets, the waves lines got thick and ugly. The blur-based gradient spreads the same value range over a wider physical area in coves, stretching the wave bands out.
+This worked great on straight coastlines. In concave coves and inlets, the wave lines got thick and ugly. The blur-based gradient spreads the same value range over a wider physical area in coves, stretching the wave bands out.
 
 I tried multiple fixes:
 - **Screen-space derivatives** to detect gradient stretching — worked at one zoom level, broke at others.
@@ -178,7 +178,7 @@ The solve was to do a CPU-side "surroundedness" probe that checks each water cel
 
 ## Making Tiles in Blender
 
-The 3D tile assets come from KayKit's fantastic low-poly [ Medieval Hexagon pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon). But it was missing some key connectors needed for a sub-complete tileset, so I dusted off my Blender skills and built new tiles: sloping rivers, river dead-ends, river-to-coast connectors, and several cliff edge variants.
+The 3D tile assets come from KayKit's fantastic low-poly [Medieval Hexagon pack](https://kaylousberg.itch.io/kaykit-medieval-hexagon). But it was missing some key connectors needed for a sub-complete tileset, so I dusted off my Blender skills and built new tiles: sloping rivers, river dead-ends, river-to-coast connectors, and several cliff edge variants.
 
 The key constraint: every tile is exactly 2 world units wide, and edge types must align perfectly at the hex boundaries. Getting UVs right means the texture atlas maps correctly across tile seams. A misaligned UV by even a few pixels creates a visible seam line that breaks the illusion.
 
@@ -191,7 +191,7 @@ The key constraint: every tile is exactly 2 world units wide, and edge types mus
 The algorithm gets you a valid map. Making it look like a place you'd want to visit is a whole separate problem.
 
 <!-- full -->
-![Blender viewport showing hex tiles](img/pretty.jpg)
+![Completed map beauty shot](img/pretty.jpg)
 
 ### WebGPU and TSL Shaders
 
@@ -201,17 +201,17 @@ The renderer is **Three.js with WebGPU** and **TSL** (Three.js Shading Language)
 
 The raw render looks... fine. Flat. Like a board game photographed under fluorescent lights. The post-processing pipeline is what gives it atmosphere:
 
-1. **GTAO Ambient Occlusion** — darkens crevices between tiles, around buildings and trees. This makes everthing feel more solid. The AO result is denoised to reduce speckling. This runs at half resolution since AO and denoising is expensive.
-2. **Depth of Field** — tilt-shift blur based on camera distance gives it that miniature/diorama feel. We scale the DOF focal length with the camera zoom to give more DOF when zoomed in.
+1. **GTAO Ambient Occlusion** — darkens crevices between tiles, around buildings and trees. This makes everything feel more solid. The AO result is denoised to reduce speckling. This runs at half resolution since AO and denoising is expensive.
+2. **Depth of Field** — tilt-shift blur based on camera distance gives it that miniature/diorama feel. The DOF focal length scales with the camera zoom to give more DOF when zoomed in.
 3. **Vignette + Film Grain** — subtle edge darkening and noise. Just enough to feel analog.
 
 <!-- slideshow -->
-![Normals](img/postfx/00-normal.jpg) ![AO](img/postfx/02-ao.jpg) ![Raw render](img/postfx/01-raw.jpg)  ![AO Composite](img/postfx/03-with-ao.jpg) ![DOF](img/postfx/04-with-dof.jpg) ![Vignetter and Grain](img/postfx/05-with-vig-grain.jpg)
+![Normals](img/postfx/00-normal.jpg) ![AO](img/postfx/02-ao.jpg) ![Raw render](img/postfx/01-raw.jpg)  ![AO Composite](img/postfx/03-with-ao.jpg) ![DOF](img/postfx/04-with-dof.jpg) ![Vignette and Grain](img/postfx/05-with-vig-grain.jpg)
 *Post-processing. AO, depth of field and grain do a lot of heavy lifting.*
 
 ### Dynamic Shadow Maps
 
-The shadow map frustum is fitted to the camera view every frame. The visible area is projected into the light's coordinate system to compute the tightest possible bounding box, so no shadow map texels are wasted on off-screen geometry. Zoomed out, shadows cover the whole map at lower resolution. Zoom in, and the shadow map tightens to give you crisp, detailed shadows on individual tiles. This prevents  blocky shadow artifacts when you zoom in.
+The shadow map frustum is fitted to the camera view every frame. The visible area is projected into the light's coordinate system to compute the tightest possible bounding box, so no shadow map texels are wasted on off-screen geometry. Zoomed out, shadows cover the whole map at lower resolution. Zoom in, and the shadow map tightens to give you crisp, detailed shadows on individual tiles. This prevents blocky shadow artifacts when you zoom in.
 
 <!-- slideshow -->
 ![Fixed shadow map](img/shadows/01-blurry.jpg)
@@ -223,7 +223,7 @@ The shadow map frustum is fitted to the camera view every frame. The visible are
 
 The complete map has thousands of tiles and decorations. Drawing each one individually would kill the frame rate. The solution is two-fold:
 
-**BatchedMesh** — each hex grid gets 2 BatchedMeshes: one for tiles, one for decorations. The beauty of a BatchedMesh is that each mesh can have seperate geometry and transforms, but they all render in a single draw call. The GPU handles per-instance transforms and geometry offsets, so CPU cost is essentially zero after setup.
+**BatchedMesh** — each hex grid gets 2 BatchedMeshes: one for tiles, one for decorations. The beauty of a BatchedMesh is that each mesh can have separate geometry and transforms, but they all render in a single draw call. The GPU handles per-instance transforms and geometry offsets, so CPU cost is essentially zero after setup.
 
 The whole scene renders in a handful of draw calls regardless of map complexity. That means the base render is cheap, so you can spend your GPU budget on AO, DoF, and color grading instead.
 
@@ -264,7 +264,7 @@ No dice required this time — but the feeling is the same. You hit a button, th
 - **TSL** (Three.js Shading Language) for all custom shaders
 - **Web Workers** for off-thread WFC solving
 - **Vite** for builds
-- **BatchedMesh** for efficient tile rendering (one draw call for thousands of tiles)
+- **BatchedMesh** for efficient tile rendering (one draw call)
 - **Seeded RNG** for deterministic, reproducible maps
 
 
@@ -293,4 +293,4 @@ No dice required this time — but the feeling is the same. You hit a button, th
 
 I'm Felix Turner, a creative developer and founder of [Airtight Interactive](https://airtight.cc). I build interactive visual experiments, WebGL/WebGPU experiences, and generative art.
 
-my bsky / twitter links
+[Twitter](https://x.com/felixturner) · [Bluesky](https://bsky.app/profile/felixturner.bsky.social)
